@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Sign-Up & Login</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f3f3f3; margin: 0; padding: 0; }
+  .container { width: 400px; background: white; padding: 20px; border-radius: 10px; margin: 50px auto; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+  h2 { text-align: center; }
+  input, select, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 5px; border: 1px solid #ccc; }
+  button { background: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 12px; }
+  button:hover { background: #45a049; }
+  .hidden { display: none; }
+  .password-rules { font-size: 0.85em; margin-top: 8px; line-height: 1.5em; }
+  .valid { color: green; }
+  .invalid { color: red; }
+  .error { color: red; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<div class="container" id="signup-section">
+  <h2>Sign Up</h2>
+
+  <label>Email:</label>
+  <input type="email" id="email" placeholder="Enter your email" autocomplete="off" required>
+  <button type="button" onclick="sendOTP()">Send OTP</button>
+
+  <div id="otp-section" class="hidden">
+    <p>Enter the OTP sent to your email:</p>
+    <input type="text" id="otp" maxlength="6" placeholder="Enter OTP">
+    <button type="button" onclick="verifyOTP()">Verify OTP</button>
+  </div>
+
+  <div id="account-section" class="hidden">
+    <label>Username:</label>
+    <input type="text" id="username" placeholder="Create a username" autocomplete="off">
+
+    <label>Password:</label>
+    <input type="password" id="password" placeholder="Create password" autocomplete="off" oninput="checkPassword()">
+
+    <div class="password-rules" id="rules">
+      <div id="ruleLength" class="invalid">❌ Must be at least 12 characters</div>
+      <div id="ruleUpper" class="invalid">❌ At least 1 capital letter</div>
+      <div id="ruleNumber" class="invalid">❌ At least 2 numbers</div>
+      <div id="ruleSymbol" class="invalid">❌ At least 2 special symbols</div>
+      <div id="ruleRepeat" class="invalid">❌ No repeated characters</div>
+    </div>
+
+    <label>Confirm Password:</label>
+    <input type="password" id="confirmPassword" placeholder="Confirm password" autocomplete="off">
+    <div class="error" id="confirmError"></div>
+
+    <button type="button" onclick="confirmPassword()">Confirm Password</button>
+  </div>
+</div>
+
+<div class="container hidden" id="post-login-section">
+  <h2>Welcome!</h2>
+  <div id="backupPrompt">
+    <p>Do you want to set a backup email?</p>
+    <button onclick="showBackupEmail()">Yes</button>
+    <button onclick="skipBackupEmail()">No</button>
+  </div>
+
+  <div id="backupEmailSection" class="hidden">
+    <input type="email" id="backupEmail" placeholder="Enter backup email" autocomplete="off">
+    <button type="button" onclick="sendBackupOTP()">Send Backup OTP</button>
+
+    <div id="backupOtpSection" class="hidden">
+      <p>Enter the OTP sent to your backup email:</p>
+      <input type="text" id="backupOtp" maxlength="6" placeholder="Enter Backup OTP">
+      <button type="button" onclick="verifyBackupOTP()">Verify Backup OTP</button>
+    </div>
+  </div>
+
+  <div id="permissionsSection" class="hidden">
+    <label>Permissions (optional):</label>
+    <select id="permissions" onchange="showPermissionInput()">
+      <option value="none">None</option>
+      <option value="name">Name</option>
+      <option value="phone">Phone</option>
+      <option value="age">Age</option>
+      <option value="gender">Gender</option>
+    </select>
+
+    <div id="permissionInput" class="hidden"></div>
+    <button onclick="finishSetup()">Finish</button>
+  </div>
+</div>
+
+<script>
+let generatedOTP = "";
+let backupOTP = "";
+let registeredUser = {};
+
+// ---- OTP generation ----
+function sendOTP() {
+  const email = document.getElementById('email').value.trim();
+  if (!email) return alert("Please enter your email!");
+  generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  alert("Demo OTP for " + email + ": " + generatedOTP);
+  document.getElementById('otp-section').classList.remove('hidden');
+}
+
+function verifyOTP() {
+  const otpInput = document.getElementById('otp').value.trim();
+  if (otpInput === generatedOTP) {
+    alert("Email verified successfully!");
+    document.getElementById('account-section').classList.remove('hidden');
+  } else {
+    alert("Incorrect OTP!");
+  }
+}
+
+// ---- Password Validation ----
+function checkPassword() {
+  const pwd = document.getElementById('password').value;
+  const ruleLength = document.getElementById('ruleLength');
+  const ruleUpper = document.getElementById('ruleUpper');
+  const ruleNumber = document.getElementById('ruleNumber');
+  const ruleSymbol = document.getElementById('ruleSymbol');
+  const ruleRepeat = document.getElementById('ruleRepeat');
+
+  let valid = true;
+
+  if (pwd.length >= 12) { ruleLength.className="valid"; ruleLength.innerText="✅ At least 12 characters"; }
+  else { ruleLength.className="invalid"; ruleLength.innerText="❌ Must be at least 12 characters"; valid=false; }
+
+  if (/[A-Z]/.test(pwd)) { ruleUpper.className="valid"; ruleUpper.innerText="✅ At least 1 capital letter"; }
+  else { ruleUpper.className="invalid"; ruleUpper.innerText="❌ At least 1 capital letter"; valid=false; }
+
+  if ((pwd.match(/[0-9]/g)||[]).length>=2) { ruleNumber.className="valid"; ruleNumber.innerText="✅ At least 2 numbers"; }
+  else { ruleNumber.className="invalid"; ruleNumber.innerText="❌ At least 2 numbers"; valid=false; }
+
+  if ((pwd.match(/[^A-Za-z0-9]/g)||[]).length>=2) { ruleSymbol.className="valid"; ruleSymbol.innerText="✅ At least 2 special symbols"; }
+  else { ruleSymbol.className="invalid"; ruleSymbol.innerText="❌ At least 2 special symbols"; valid=false; }
+
+  if (/(\w).*\1/.test(pwd)) { ruleRepeat.className="invalid"; ruleRepeat.innerText="❌ No repeated characters"; valid=false; }
+  else { ruleRepeat.className="valid"; ruleRepeat.innerText="✅ No repeated characters"; }
+
+  return valid;
+}
+
+function confirmPassword() {
+  const pwd = document.getElementById('password').value;
+  const confirmPwd = document.getElementById('confirmPassword').value;
+  const confirmError = document.getElementById('confirmError');
+
+  if(!checkPassword()) { alert("Please meet all password requirements."); return; }
+  if(pwd !== confirmPwd) { confirmError.innerText="Passwords do not match!"; return; }
+  confirmError.innerText="";
+
+  registeredUser = {
+    email: document.getElementById('email').value,
+    username: document.getElementById('username').value,
+    password: pwd
+  };
+
+  alert("✅ Registration complete! You are now logged in.");
+  document.getElementById('signup-section').classList.add('hidden');
+  document.getElementById('post-login-section').classList.remove('hidden');
+}
+
+// ---- Backup Email Flow ----
+function showBackupEmail() {
+  document.getElementById('backupPrompt').classList.add('hidden');
+  document.getElementById('backupEmailSection').classList.remove('hidden');
+}
+
+function skipBackupEmail() {
+  document.getElementById('backupPrompt').classList.add('hidden');
+  document.getElementById('permissionsSection').classList.remove('hidden');
+}
+
+function sendBackupOTP() {
+  const backupEmail = document.getElementById('backupEmail').value.trim();
+  if (!backupEmail) return alert("Please enter a backup email!");
+  backupOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  alert("Demo Backup OTP for " + backupEmail + ": " + backupOTP);
+  document.getElementById('backupOtpSection').classList.remove('hidden');
+}
+
+function verifyBackupOTP() {
+  const otpInput = document.getElementById('backupOtp').value.trim();
+  if(otpInput === backupOTP) {
+    alert("✅ Backup email verified!");
+    document.getElementById('permissionsSection').classList.remove('hidden');
+  } else { alert("❌ Invalid backup OTP!"); }
+}
+
+// ---- Dynamic Permissions Input ----
+function showPermissionInput() {
+  const perm = document.getElementById('permissions').value;
+  const container = document.getElementById('permissionInput');
+  container.innerHTML = "";
+  
+  if(perm === "none") { container.classList.add('hidden'); return; }
+  
+  container.classList.remove('hidden');
+  if(perm === "name") {
+    container.innerHTML = '<input type="text" id="permValue" placeholder="Enter your name">';
+  } else if(perm === "phone") {
+    container.innerHTML = '<input type="tel" id="permValue" placeholder="Enter your phone number">';
+  } else if(perm === "age") {
+    container.innerHTML = '<input type="number" id="permValue" placeholder="Enter your age">';
+  } else if(perm === "gender") {
+    container.innerHTML = `
+      <select id="permValue">
+        <option value="">Select gender</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="none">Prefer not to say</option>
+      </select>
+    `;
+  }
+}
+
+// ---- Finish Setup (Modified for Embedded Page + Hello World) ----
+function finishSetup() {
+  const permission = document.getElementById('permissions').value;
+  if(permission !== "none") {
+    const value = document.getElementById('permValue').value;
+    registeredUser.permission = { type: permission, value: value };
+  } else {
+    registeredUser.permission = { type: "none" };
+  }
+
+  // Step 1: Show embedded page with user info
+  const userData = JSON.stringify(registeredUser, null, 2);
+  const embeddedWindow = window.open("", "Embedded Info", "width=400,height=400");
+  embeddedWindow.document.write(`
+    <html>
+      <head>
+        <title>Your Info</title>
+      </head>
+      <body style="font-family: Arial; padding: 20px;">
+        <h2>Here is your entered information:</h2>
+        <pre>${userData}</pre>
+        <button id="okBtn">OK</button>
+      </body>
+    </html>
+  `);
+
+  // Step 2: When "OK" is clicked, redirect to Hello World page
+  embeddedWindow.document.getElementById("okBtn").onclick = function() {
+    embeddedWindow.close();
+    document.body.innerHTML = `<div style="text-align:center; margin-top:50px; font-size:2em;">Hello World!</div>`;
+  };
+}
+</script>
+
+</body>
+</html>
